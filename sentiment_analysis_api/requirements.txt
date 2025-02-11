@@ -1,0 +1,6 @@
+flask
+flask_sqlalchemy
+scikit-learn
+mysql-connector-python
+pandas
+numpy

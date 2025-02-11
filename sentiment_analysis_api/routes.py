@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Tweet
+from sentiment_analysis_api.models import db, Tweet
 
 api_bp = Blueprint('api', __name__)
 
@@ -12,3 +12,4 @@ def analyze():
     tweets = data.get("tweets", [])
     response = {tweet: 0 for tweet in tweets}  # Score neutre temporaire
     return jsonify(response)
+

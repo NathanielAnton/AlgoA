@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: socialmetrics
+    ports:
+      - "3307:3306" # On change le port hôte de 3306 à 3307
