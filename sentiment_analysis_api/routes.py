@@ -1,15 +1,16 @@
 from flask import Blueprint, request, jsonify
-from sentiment_analysis_api.models import db, Tweet
+from ml_model import predict_sentiment, get_session
 
+# Création du blueprint Flask
 api_bp = Blueprint('api', __name__)
 
-@api_bp.route('/analyze', methods=['GET', 'POST'])
+@api_bp.route('/analyze', methods=['POST'])
 def analyze():
-    if request.method == 'GET':
-        return jsonify({"message": "Utilisez une requête POST avec des tweets."}), 400
-
     data = request.json
     tweets = data.get("tweets", [])
-    response = {tweet: 0 for tweet in tweets}  # Score neutre temporaire
-    return jsonify(response)
 
+    if not isinstance(tweets, list) or not all(isinstance(t, str) for t in tweets):
+        return jsonify({"error": "❌ Entrée invalide. Envoyez une liste de textes."}), 400
+
+    response = predict_sentiment(tweets)
+    return jsonify(response)

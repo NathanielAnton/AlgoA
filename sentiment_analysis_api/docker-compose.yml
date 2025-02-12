@@ -1,16 +1,18 @@
-version: '3'
+version: '3.8'
 
 services:
-  app:
-    build: .
-    ports:
-      - "5000:5000"
-    depends_on:
-      - db
   db:
     image: mysql:5.7
+    restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: socialmetrics
+      MYSQL_DATABASE: sentiment_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "3307:3306" # On change le port hôte de 3306 à 3307
+      - "3306:3306"
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:

@@ -4,6 +4,6 @@ db = SQLAlchemy()
 
 class Tweet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
-    positive = db.Column(db.Boolean, nullable=False)
-    negative = db.Column(db.Boolean, nullable=False)
+    text = db.Column(db.String(280), nullable=False) 
+    positive = db.Column(db.Boolean, default=False)  
+    negative = db.Column(db.Boolean, default=False)  
