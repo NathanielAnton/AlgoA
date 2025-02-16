@@ -5,3 +5,5 @@ mysql-connector-python
 pandas
 numpy
 pymysql
+matplotlib
+seaborn
