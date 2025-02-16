@@ -4,10 +4,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 import mysql.connector
 import pickle
+import datetime
 
 # Connexion à la base de données MySQL
 db_connection = mysql.connector.connect(
-    host="127.0.0.1",  # Utilisation de localhost
+    host="127.0.0.1",  
     port=3307,  # Port correct selon docker ps
     user="root",
     password="rootpassword",
@@ -16,9 +17,11 @@ db_connection = mysql.connector.connect(
 
 cursor = db_connection.cursor()
 
-# Fonction pour récupérer les données
-def get_data():
-    cursor.execute("SELECT text, positive, negative FROM tweet WHERE text IS NOT NULL AND text != ''")
+# Fonction pour récupérer les données les plus récentes
+def get_latest_data():
+    # Requête pour récupérer les derniers tweets (par id décroissant)
+    query = "SELECT text, positive, negative FROM tweet ORDER BY id DESC LIMIT 100"
+    cursor.execute(query)
     rows = cursor.fetchall()
 
     texts = [row[0] for row in rows]
@@ -34,38 +37,45 @@ def get_data():
 
     return texts, labels
 
-# Préparation et entraînement du modèle
-def train_model():
-    texts, labels = get_data()
+# Fonction pour réentraîner le modèle
+def retrain_model():
+    texts, labels = get_latest_data()
 
-    # Séparation des labels en classes positives et négatives
+    if len(texts) == 0:
+        print("⚠️ Pas de nouvelles données pour réentraîner le modèle.")
+        return
+    
+    print(f"🔄 Réentraînement avec {len(texts)} nouveaux tweets.")
+
     y = [1 if label[0] == 1 else 0 for label in labels]  # Sentiment positif
-    y_neg = [1 if label[1] == 1 else 0 for label in labels]  # Sentiment négatif
-
-    # Transformation des textes en vecteurs TF-IDF
     vectorizer = TfidfVectorizer(stop_words='english')
+
+    # Charger l'ancien modèle et le vectorizer si disponibles
+    try:
+        with open("vectorizer.pkl", "rb") as f:
+            vectorizer = pickle.load(f)
+        with open("sentiment_model.pkl", "rb") as f:
+            model = pickle.load(f)
+        print("✅ Ancien modèle chargé.")
+    except FileNotFoundError:
+        print("⚠️ Aucun modèle précédent trouvé, entraînement d'un nouveau modèle.")
+        model = LogisticRegression(class_weight='balanced')
+
     X = vectorizer.fit_transform(texts)
-
-    print(f"Nombre de features après vectorisation : {X.shape[1]}")
-
-    # Séparation des données en ensemble d'entraînement et de test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Création et entraînement du modèle
-    model = LogisticRegression(class_weight='balanced')
     model.fit(X_train, y_train)
-
-    # Prédictions et évaluation
     y_pred = model.predict(X_test)
+
     print(classification_report(y_test, y_pred))
 
-    # Sauvegarde du modèle
-    with open("sentiment_model.pkl", "wb") as model_file:
-        pickle.dump(model, model_file)
+    # Sauvegarde du modèle et du vectorizer
+    with open("sentiment_model.pkl", "wb") as f:
+        pickle.dump(model, f)
+    with open("vectorizer.pkl", "wb") as f:
+        pickle.dump(vectorizer, f)
 
-    # Sauvegarde du vectoriseur
-    with open("vectorizer.pkl", "wb") as vectorizer_file:
-        pickle.dump(vectorizer, vectorizer_file)
+    print("✅ Nouveau modèle sauvegardé.")
 
 if __name__ == "__main__":
-    train_model()
+    retrain_model()
