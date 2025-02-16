@@ -1,10 +1,12 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 import mysql.connector
 import pickle
 import datetime
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Connexion à la base de données MySQL
 db_connection = mysql.connector.connect(
@@ -19,7 +21,6 @@ cursor = db_connection.cursor()
 
 # Fonction pour récupérer les données les plus récentes
 def get_latest_data():
-    # Requête pour récupérer les derniers tweets (par id décroissant)
     query = "SELECT text, positive, negative FROM tweet ORDER BY id DESC LIMIT 100"
     cursor.execute(query)
     rows = cursor.fetchall()
@@ -27,15 +28,23 @@ def get_latest_data():
     texts = [row[0] for row in rows]
     labels = [(row[1], row[2]) for row in rows]
 
-    # Vérification des longueurs
     print(f"Nombre de tweets : {len(texts)}")
     print(f"Nombre de labels : {len(labels)}")
 
-    # Vérification de l'alignement des données
     if len(texts) != len(labels):
         raise ValueError("Le nombre de tweets ne correspond pas au nombre de labels.")
 
     return texts, labels
+
+# Fonction pour afficher et sauvegarder une matrice de confusion
+def plot_confusion_matrix(cm, title, filename):
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Négatif', 'Positif'], yticklabels=['Négatif', 'Positif'])
+    plt.title(title)
+    plt.xlabel("Prédictions")
+    plt.ylabel("Véritables Labels")
+    plt.savefig(filename)  # Sauvegarde en image
+    plt.show()
 
 # Fonction pour réentraîner le modèle
 def retrain_model():
@@ -47,7 +56,7 @@ def retrain_model():
     
     print(f"🔄 Réentraînement avec {len(texts)} nouveaux tweets.")
 
-    y = [1 if label[0] == 1 else 0 for label in labels]  # Sentiment positif
+    y = [1 if label[0] == 1 else 0 for label in labels]  # 1 = Positif, 0 = Négatif
     vectorizer = TfidfVectorizer(stop_words='english')
 
     # Charger l'ancien modèle et le vectorizer si disponibles
@@ -67,7 +76,28 @@ def retrain_model():
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
-    print(classification_report(y_test, y_pred))
+    # Rapport de classification
+    print("### Rapport de Classification ###")
+    report = classification_report(y_test, y_pred)
+    print(report)
+
+    # Calcul et affichage de la matrice de confusion globale
+    cm_global = confusion_matrix(y_test, y_pred)
+    plot_confusion_matrix(cm_global, "Matrice de Confusion Globale", "confusion_matrix_global.png")
+
+    # Extraire les vraies et fausses prédictions
+    true_positives = cm_global[1, 1]  # Bien classé comme positif
+    false_negatives = cm_global[1, 0]  # Classé négatif mais était positif
+    false_positives = cm_global[0, 1]  # Classé positif mais était négatif
+    true_negatives = cm_global[0, 0]  # Bien classé comme négatif
+
+    # Matrice pour les prédictions positives
+    cm_positive = [[0, false_negatives], [0, true_positives]]
+    plot_confusion_matrix(cm_positive, "Matrice de Confusion - Classe Positive", "confusion_matrix_positive.png")
+
+    # Matrice pour les prédictions négatives
+    cm_negative = [[true_negatives, 0], [false_positives, 0]]
+    plot_confusion_matrix(cm_negative, "Matrice de Confusion - Classe Négative", "confusion_matrix_negative.png")
 
     # Sauvegarde du modèle et du vectorizer
     with open("sentiment_model.pkl", "wb") as f:
