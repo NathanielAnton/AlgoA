@@ -1,17 +1,19 @@
-import mysql.connector
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
+import mysql.connector
 import pickle
 
 # Connexion à la base de données MySQL
 db_connection = mysql.connector.connect(
-    host="localhost",
-    user="root",  # Remplacez par votre utilisateur MySQL
-    password="rootpassword",  # Remplacez par votre mot de passe MySQL
+    host="127.0.0.1",  # Utilisation de localhost
+    port=3307,  # Port correct selon docker ps
+    user="root",
+    password="rootpassword",
     database="sentiment_db"
 )
+
 cursor = db_connection.cursor()
 
 # Fonction pour récupérer les données
